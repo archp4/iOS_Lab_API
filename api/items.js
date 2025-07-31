@@ -1,35 +1,42 @@
-const fs = require("fs");
-const path = require("path");
+const express = require("express");
+const cors = require("cors");
 
-const DATA_FILE = path.join(__dirname, "items.json");
+const app = express();
+const PORT = 3000;
 
-function loadItems() {
-  if (!fs.existsSync(DATA_FILE)) return [];
-  return JSON.parse(fs.readFileSync(DATA_FILE));
-}
-function saveItems(items) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(items, null, 2));
-}
+app.use(cors());
+app.use(express.json());
 
-module.exports = async (req, res) => {
-  if (req.method === "GET") {
-    res.status(200).json(loadItems());
-  } else if (req.method === "POST") {
-    const body = await new Promise((resolve) => {
-      let str = "";
-      req.on("data", (chunk) => (str += chunk));
-      req.on("end", () => resolve(JSON.parse(str || "{}")));
-    });
-    const items = loadItems();
-    const item = {
-      id: Date.now(),
-      title: body.title,
-      imageURL: body.imageURL,
-    };
-    items.push(item);
-    saveItems(items);
-    res.status(201).json(item);
-  } else {
-    res.status(405).send("Method Not Allowed");
+let items = [];
+
+app.get("/items", (req, res) => {
+  res.json(items);
+});
+
+app.post("/items", (req, res) => {
+  const { title, imageURL } = req.body;
+
+  if (!title || !imageURL) {
+    return res
+      .status(400)
+      .json({ error: "Missing 'title' or 'imageURL' in request body" });
   }
-};
+
+  const item = {
+    id: Date.now(),
+    title,
+    imageURL,
+  };
+
+  items.push(item);
+  res.status(201).json(item);
+});
+
+app.get("/", (req, res) => {
+  res.json({ message: "Welcome to the Items API!" });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Express app listening on port ${PORT}`);
+});
